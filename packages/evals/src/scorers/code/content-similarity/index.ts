@@ -36,22 +36,44 @@ export function createContentSimilarityScorer(
       };
     })
     .generateScore(({ results }) => {
-      // compareTwoStrings strips whitespace, so when it counts, rename each distinct character to a non-whitespace one
-      const codes = new Map<string, string>();
-      const encode = (text: string) =>
-        ignoreWhitespace
-          ? text
-          : text.replace(/[^]/g, char => {
-              const code = codes.get(char) ?? String.fromCharCode(0x4e00 + codes.size);
-              codes.set(char, code);
-              return code;
-            });
-
-      const similarity = stringSimilarity.compareTwoStrings(
-        encode(results.preprocessStepResult?.processedInput),
-        encode(results.preprocessStepResult?.processedOutput),
-      );
+      const input = results.preprocessStepResult?.processedInput;
+      const output = results.preprocessStepResult?.processedOutput;
+      // compareTwoStrings strips all whitespace before comparing, so when
+      // whitespace should count, run the same Dice bigram comparison without
+      // the strip. Re-encoding whitespace as another character does not work:
+      // any real character can appear in the input and collide.
+      const similarity = ignoreWhitespace
+        ? stringSimilarity.compareTwoStrings(input, output)
+        : comparePreservingWhitespace(input, output);
 
       return similarity;
     });
+}
+
+// Dice coefficient over bigrams, identical to string-similarity's
+// compareTwoStrings except whitespace is not stripped first.
+function comparePreservingWhitespace(first?: string, second?: string): number {
+  const a = first ?? '';
+  const b = second ?? '';
+
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+
+  const firstBigrams = new Map<string, number>();
+  for (let i = 0; i < a.length - 1; i++) {
+    const bigram = a.substring(i, i + 2);
+    firstBigrams.set(bigram, (firstBigrams.get(bigram) ?? 0) + 1);
+  }
+
+  let intersectionSize = 0;
+  for (let i = 0; i < b.length - 1; i++) {
+    const bigram = b.substring(i, i + 2);
+    const count = firstBigrams.get(bigram) ?? 0;
+    if (count > 0) {
+      firstBigrams.set(bigram, count - 1);
+      intersectionSize++;
+    }
+  }
+
+  return (2.0 * intersectionSize) / (a.length + b.length - 2);
 }

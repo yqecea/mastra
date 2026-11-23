@@ -123,4 +123,21 @@ describe('ContentSimilarityMetric', () => {
     const result = await caseOnlyMetric.run(createAgentTestRun({ inputMessages, output }));
     expect(result.score).toBe(1);
   });
+
+  it('should count whitespace over the full UTF-16 alphabet when ignoreWhitespace is false', async () => {
+    const whitespaceSensitiveMetric = createContentSimilarityScorer({ ignoreCase: true, ignoreWhitespace: false });
+    const whitespacePattern = /\s/;
+    const distinctChars: string[] = [];
+    for (let codePoint = 0x21; distinctChars.length < 45311 && codePoint <= 0xffff; codePoint++) {
+      const char = String.fromCharCode(codePoint);
+      if (!whitespacePattern.test(char) && char.toLowerCase().length === 1) {
+        distinctChars.push(char);
+      }
+    }
+    const prefix = distinctChars.join('');
+    const inputMessages = [createTestMessage({ content: prefix + ' '.repeat(100000), role: 'user', id: 'test-input' })];
+    const output = [createTestMessage({ content: prefix, role: 'assistant', id: 'test-output' })];
+    const result = await whitespaceSensitiveMetric.run(createAgentTestRun({ inputMessages, output }));
+    expect(result.score).toBeCloseTo(0.4753960759626482, 12);
+  });
 });
