@@ -15,29 +15,29 @@ function calculateRatio(input: string, output: string): number {
   }
 
   // Use character-level LCS for more accurate matching (similar to SequenceMatcher)
-  const matches = longestCommonSubsequence(input.split(''), output.split(''));
+  const matches = longestCommonSubsequence(input, output);
   const total = input.length + output.length;
 
   return total > 0 ? (2.0 * matches) / total : 0.0;
 }
 
 /**
- * Finds the length of the longest common subsequence between two lists of characters or words
+ * Finds the length of the longest common subsequence between two strings
  * Only the previous row of the DP table is needed, so memory stays linear
  */
-function longestCommonSubsequence(a: string[], b: string[]): number {
-  let previous = new Uint32Array(b.length + 1);
-  let current = new Uint32Array(b.length + 1);
+function longestCommonSubsequence(str1: string, str2: string): number {
+  let previous = new Uint32Array(str2.length + 1);
+  let current = new Uint32Array(str2.length + 1);
 
-  for (let i = 1; i <= a.length; i++) {
-    const item = a[i - 1];
-    for (let j = 1; j <= b.length; j++) {
-      current[j] = item === b[j - 1] ? previous[j - 1]! + 1 : Math.max(previous[j]!, current[j - 1]!);
+  for (let i = 1; i <= str1.length; i++) {
+    const char = str1[i - 1];
+    for (let j = 1; j <= str2.length; j++) {
+      current[j] = char === str2[j - 1] ? previous[j - 1]! + 1 : Math.max(previous[j]!, current[j - 1]!);
     }
     [previous, current] = [current, previous];
   }
 
-  return previous[b.length]!;
+  return previous[str2.length]!;
 }
 
 /**
@@ -77,11 +77,25 @@ function countChanges(input: string, output: string): number {
 
   // Use LCS approach: changes = total - 2 * matches
   // But for word-level, we want to count replacements as single changes
-  const matchingWords = longestCommonSubsequence(inputWords, outputWords);
+  const codes = new Map<string, string>();
+  const matchingWords = longestCommonSubsequence(encodeWords(inputWords, codes), encodeWords(outputWords, codes));
   const maxLength = Math.max(inputWords.length, outputWords.length);
   const changes = maxLength - matchingWords;
 
   return changes;
+}
+
+/**
+ * Replaces each distinct word with one character, so words can be compared like characters
+ */
+function encodeWords(words: string[], codes: Map<string, string>): string {
+  return words
+    .map(word => {
+      const code = codes.get(word) ?? String.fromCharCode(codes.size);
+      codes.set(word, code);
+      return code;
+    })
+    .join('');
 }
 
 export function createTextualDifferenceScorer() {
