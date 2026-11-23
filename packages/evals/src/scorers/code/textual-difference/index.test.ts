@@ -132,6 +132,15 @@ describe('TextualDifferenceMetric', () => {
     expect(heapGrowthMB).toBeLessThan(100);
   });
 
+  it('should count changes when only the word order differs', async () => {
+    const inputMessages = [createTestMessage({ content: 'dog bites man', role: 'user', id: 'test-input' })];
+    const output = [createTestMessage({ content: 'man bites dog', role: 'assistant', id: 'test-output' })];
+
+    const result = await scorer.run(createAgentTestRun({ inputMessages, output }));
+    expect(result.score).toBeLessThan(1);
+    expect(result.preprocessStepResult?.changes).toBe(2);
+  });
+
   it('should include difference details in result', async () => {
     const inputMessages = [createTestMessage({ content: 'The quick brown fox', role: 'user', id: 'test-input' })];
     const output = [createTestMessage({ content: 'The quick brown fox', role: 'assistant', id: 'test-output' })];
