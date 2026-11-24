@@ -448,6 +448,33 @@ describe('MCPClient tool discovery retries', () => {
     expect(capabilities).toMatchObject(customCapabilities);
   });
 
+  it('lets headless clients opt out of the io.modelcontextprotocol/ui extension', async () => {
+    const connectSpy = vi.spyOn(InternalMastraMCPClient.prototype, 'connect').mockResolvedValue(true);
+
+    const client = new MCPClient({
+      id: `configuration-test-${++clientId}`,
+      servers: {
+        headless: {
+          url: new URL('http://localhost:1234/mcp'),
+          capabilities: { extensions: { 'io.modelcontextprotocol/ui': false, 'example/another': { v: 1 } } },
+        },
+        default: {
+          url: new URL('http://localhost:5678/mcp'),
+        },
+      },
+    });
+
+    clients.push(client);
+
+    const headless = (await (client as any).getConnectedClientForServer('headless')).client._capabilities;
+    const fallback = (await (client as any).getConnectedClientForServer('default')).client._capabilities;
+
+    expect(connectSpy).toHaveBeenCalledTimes(2);
+    expect(headless.extensions).not.toHaveProperty('io.modelcontextprotocol/ui');
+    expect(headless.extensions['example/another']).toEqual({ v: 1 });
+    expect(fallback.extensions['io.modelcontextprotocol/ui']).toEqual({});
+  });
+
   it('advertises form elicitation when an inputRequests handler is configured', async () => {
     const connectSpy = vi.spyOn(InternalMastraMCPClient.prototype, 'connect').mockResolvedValue(true);
 

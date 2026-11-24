@@ -572,14 +572,22 @@ export class InternalMastraMCPClient extends MastraBase {
         `MCP server '${name}' advertises the elicitation capability without an inputRequests handler. Configure inputRequests or remove capabilities.elicitation.`,
       );
     }
+    // `false`/`null` opts a headless client out of the UI extension entirely;
+    // an object overrides the advertised value.
+    const {
+      'io.modelcontextprotocol/ui': uiExtension,
+      ...otherExtensions
+    } = (configured.extensions ?? {}) as Record<string, unknown>;
     const clientCapabilities: ClientCapabilities = {
       ...(server.inputRequests ? { elicitation: configured.elicitation ?? { form: {} } } : {}),
       // Advertise MCP Apps extension support so servers know we can render UI resources
       extensions: {
-        ...(configured.extensions ?? {}),
-        'io.modelcontextprotocol/ui': {},
+        ...otherExtensions,
+        ...(uiExtension === false || uiExtension === null
+          ? {}
+          : { 'io.modelcontextprotocol/ui': uiExtension ?? {} }),
         ...(this.taskOptions ? tasksCapabilityEntry() : {}),
-      },
+      } as ClientCapabilities['extensions'],
     };
 
     this.client = new Client(

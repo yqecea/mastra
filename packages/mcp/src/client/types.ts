@@ -184,8 +184,14 @@ export type MCPInputRequestHandler = (request: MCPInputRequest) => Promise<Elici
  * `elicitation` is only accepted together with an `inputRequests` handler; it defaults to
  * form support when a handler is configured. The deprecated roots and sampling
  * capabilities are not supported.
+ *
+ * `extensions` accepts `false`/`null` values: `io.modelcontextprotocol/ui` is advertised
+ * by default, and setting it to `false`/`null` opts the client out (headless clients
+ * that cannot render MCP Apps UIs).
  */
-export type MCPClientCapabilities = Pick<ClientCapabilities, 'elicitation' | 'extensions'>;
+export type MCPClientCapabilities = Pick<ClientCapabilities, 'elicitation'> & {
+  extensions?: Record<string, Record<string, unknown> | false | null>;
+};
 
 /**
  * Context passed to `requireToolApproval` when it's a function.
